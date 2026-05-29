@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-批量文件智能整理工具 v1.0
+批量文件智能整理工具 v2.0 - 时尚版
 - 按文件类型分类整理
 - 按修改日期分类整理
 - 支持拖拽或选择文件夹
-- 简单易用的图形界面
+- 全新现代化 UI 设计
 """
 
 import os
@@ -16,7 +16,7 @@ from pathlib import Path
 import threading
 import sys
 
-# 文件类型分类规则
+# ── 文件类型分类规则 ──
 FILE_CATEGORIES = {
     "文档": [
         ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
@@ -54,176 +54,278 @@ FILE_CATEGORIES = {
     ],
 }
 
+# ── 时尚配色方案 ──
+C = {
+    "bg": "#f0f2f5",
+    "card": "#ffffff",
+    "primary": "#4F46E5",
+    "primary_light": "#EEF2FF",
+    "primary_text": "#4338CA",
+    "success": "#059669",
+    "success_light": "#ECFDF5",
+    "success_text": "#047857",
+    "text_main": "#111827",
+    "text_sec": "#6B7280",
+    "border": "#E5E7EB",
+    "header_bg": "#ffffff",
+}
+
 # 字体
-DEFAULT_FONT = ("PingFang SC", 11)
-TITLE_FONT = ("PingFang SC", 16, "bold")
+FONT = ("PingFang SC", 11)
+FONT_BOLD = ("PingFang SC", 11, "bold")
+TITLE_FONT = ("PingFang SC", 18, "bold")
+SUBTITLE_FONT = ("PingFang SC", 10)
 STATUS_FONT = ("PingFang SC", 10)
+
+
+def _make_rounded_btn(parent, text, bg, fg, cmd, **kw):
+    """创建一个现代风格的按钮（用 Frame 模拟圆角效果）"""
+    btn_font = kw.pop("font", FONT_BOLD)
+    padx = kw.pop("padx", 18)
+    pady = kw.pop("pady", 8)
+    # 用 LabelFrame 作为容器模拟圆角
+    container = tk.Frame(parent, bg=bg, highlightbackground=bg, highlightthickness=0)
+    btn = tk.Button(
+        container, text=text, font=btn_font,
+        bg=bg, fg=fg,
+        activebackground=bg, activeforeground=fg,
+        relief="flat", bd=0, cursor="hand2",
+        padx=padx, pady=pady,
+        highlightthickness=0,
+        command=cmd
+    )
+    btn.pack()
+    return container, btn
+
+
+def _make_outline_btn(parent, text, color, cmd, **kw):
+    """创建一个描边风格的按钮"""
+    btn_font = kw.pop("font", FONT)
+    padx = kw.pop("padx", 14)
+    pady = kw.pop("pady", 6)
+    container = tk.Frame(parent, bg=C["card"], highlightbackground=color, highlightthickness=2, highlightcolor=color)
+    btn = tk.Button(
+        container, text=text, font=btn_font,
+        bg=C["card"], fg=color,
+        activebackground=C["primary_light"], activeforeground=color,
+        relief="flat", bd=0, cursor="hand2",
+        padx=padx, pady=pady,
+        highlightthickness=0,
+        command=cmd
+    )
+    btn.pack()
+    return container, btn
 
 
 class FileOrganizerApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("批量文件智能整理工具 v1.0")
+        self.root.title("批量文件智能整理工具 v2.0")
         self.root.geometry("720x580")
-        self.root.minsize(600, 480)
-        self.root.configure(bg="#f5f5f7")
+        self.root.minsize(620, 500)
+        self.root.configure(bg=C["bg"])
 
         # 变量
         self.source_dir = tk.StringVar()
         self.org_mode = tk.StringVar(value="type")
         self.progress_value = tk.DoubleVar(value=0)
-        self.status_text = tk.StringVar(value='就绪 | 选择文件夹后点击「开始整理」')
+        self.status_text = tk.StringVar(value='就绪 · 选择文件夹后点击「开始整理」')
         self.file_count_var = tk.StringVar(value="待扫描文件数：-")
         self.is_running = False
         self.files_to_process = []
+        self.path_entry = None
+        self.start_btn = None
 
         self._build_ui()
 
+    # ── 构建 UI ──
     def _build_ui(self):
-        # 标题
-        header = tk.Frame(self.root, bg="#f5f5f7")
-        header.pack(fill="x", padx=24, pady=(20, 0))
+        # ====== 顶栏 ======
+        top_bg = C["header_bg"]
+        header = tk.Frame(self.root, bg=top_bg, highlightthickness=0)
+        header.pack(fill="x", pady=(0, 0))
+
+        # 加一条底部细阴影
+        tk.Frame(self.root, bg=C["border"], height=1).pack(fill="x")
+
+        header_inner = tk.Frame(header, bg=top_bg, padx=28, pady=(20, 16))
+        header_inner.pack(fill="x")
 
         tk.Label(
-            header, text="📂 批量文件智能整理工具",
-            font=TITLE_FONT, bg="#f5f5f7", fg="#1d1d1f"
+            header_inner, text="🧹 文件智能整理工具",
+            font=TITLE_FONT, bg=top_bg, fg=C["text_main"]
         ).pack(anchor="w")
 
         tk.Label(
-            header, text="自动按类型或日期分类，让文件不再杂乱",
-            font=STATUS_FONT, bg="#f5f5f7", fg="#6e6e73"
-        ).pack(anchor="w", pady=(2, 0))
+            header_inner, text="自动按类型或日期分类 · 跨平台 · 纯本地运行",
+            font=SUBTITLE_FONT, bg=top_bg, fg=C["text_sec"]
+        ).pack(anchor="w", pady=(3, 0))
 
-        # 主容器
-        main = tk.Frame(self.root, bg="#f5f5f7")
-        main.pack(fill="both", expand=True, padx=24, pady=(16, 0))
+        # ====== 主区域 ======
+        main = tk.Frame(self.root, bg=C["bg"])
+        main.pack(fill="both", expand=True, padx=28, pady=(20, 16))
 
-        # 选择文件夹区域
-        folder_frame = tk.LabelFrame(
-            main, text=" 选择要整理的文件夹 ",
-            font=("PingFang SC", 11), bg="#ffffff", fg="#1d1d1f",
-            padx=16, pady=12, relief="groove", bd=1
-        )
-        folder_frame.pack(fill="x", pady=(0, 12))
+        # ── 卡片：文件夹选择 ──
+        card1 = self._make_card(main)
+        card1.pack(fill="x")
 
-        path_row = tk.Frame(folder_frame, bg="#ffffff")
-        path_row.pack(fill="x")
+        tk.Label(
+            card1, text="📁 选择文件夹",
+            font=FONT_BOLD, bg=C["card"], fg=C["text_main"]
+        ).pack(anchor="w")
+
+        path_row = tk.Frame(card1, bg=C["card"])
+        path_row.pack(fill="x", pady=(10, 0))
 
         self.path_entry = tk.Entry(
             path_row, textvariable=self.source_dir,
-            font=("PingFang SC", 10), bg="#f5f5f7",
-            relief="flat", bd=0, highlightthickness=1,
-            highlightcolor="#0071e3", highlightbackground="#d2d2d7"
+            font=("PingFang SC", 10), bg=C["bg"],
+            relief="flat", bd=0, highlightthickness=1.5,
+            highlightcolor=C["primary"], highlightbackground=C["border"],
+            insertbackground=C["text_main"]
         )
-        self.path_entry.pack(side="left", fill="x", expand=True, ipady=4)
+        self.path_entry.pack(side="left", fill="x", expand=True, ipady=6, ipadx=8)
 
-        tk.Button(
-            path_row, text="选择文件夹",
-            font=("PingFang SC", 10), bg="#0071e3", fg="white",
-            relief="flat", padx=14, pady=4, cursor="hand2",
-            activebackground="#0077ed", activeforeground="white",
-            command=self.select_folder
-        ).pack(side="right", padx=(8, 0))
-
-        # 整理模式选择
-        mode_frame = tk.LabelFrame(
-            main, text=" 整理模式 ",
-            font=("PingFang SC", 11), bg="#ffffff", fg="#1d1d1f",
-            padx=16, pady=12, relief="groove", bd=1
+        _, self.folder_btn = _make_outline_btn(
+            path_row, "选择文件夹", C["primary_text"],
+            cmd=self.select_folder, font=FONT_BOLD, padx=16, pady=6
         )
-        mode_frame.pack(fill="x", pady=(0, 12))
+        self.folder_btn.master.pack(side="right", padx=(10, 0))
 
-        modes_row = tk.Frame(mode_frame, bg="#ffffff")
-        modes_row.pack(fill="x")
+        # ── 卡片：整理模式 ──
+        card2 = self._make_card(main)
+        card2.pack(fill="x", pady=(12, 0))
 
-        tk.Radiobutton(
-            modes_row, text="按文件类型分类",
-            variable=self.org_mode, value="type",
-            font=("PingFang SC", 11), bg="#ffffff",
-            activebackground="#ffffff", fg="#1d1d1f",
-            selectcolor="#ffffff"
-        ).pack(side="left", padx=(0, 24))
-
-        tk.Radiobutton(
-            modes_row, text="按修改日期分类（年/月）",
-            variable=self.org_mode, value="date",
-            font=("PingFang SC", 11), bg="#ffffff",
-            activebackground="#ffffff", fg="#1d1d1f",
-            selectcolor="#ffffff"
-        ).pack(side="left")
-
-        # 功能说明
-        info_frame = tk.LabelFrame(
-            main, text=" 功能介绍 ",
-            font=("PingFang SC", 11), bg="#ffffff", fg="#1d1d1f",
-            padx=16, pady=12, relief="groove", bd=1
-        )
-        info_frame.pack(fill="x", pady=(0, 12))
-
-        info_text = (
-            "• 按文件类型：自动创建「文档」「图片」「视频」等文件夹分类存放\n"
-            "• 按修改日期：自动按「年/月」创建目录层级\n"
-            "• 仅整理文件，不删除任何内容，安全可靠\n"
-            "• 支持几乎所有常见文件格式"
-        )
         tk.Label(
-            info_frame, text=info_text, justify="left",
-            font=("PingFang SC", 10), bg="#ffffff", fg="#515154",
-            anchor="w"
-        ).pack(fill="x")
+            card2, text="⚙️ 整理模式",
+            font=FONT_BOLD, bg=C["card"], fg=C["text_main"]
+        ).pack(anchor="w")
 
-        # 进度条和状态
-        progress_frame = tk.Frame(main, bg="#f5f5f7")
-        progress_frame.pack(fill="x", pady=(0, 8))
+        modes_row = tk.Frame(card2, bg=C["card"])
+        modes_row.pack(fill="x", pady=(10, 0))
+
+        # 自定义单选按钮（用 Frame 模拟好看的选项）
+        self._radio_option(modes_row, "按文件类型分类", "type", 0)
+        self._radio_option(modes_row, "按修改日期分类（年/月）", "date", 1)
+
+        # ── 卡片：功能介绍 ──
+        card3 = self._make_card(main)
+        card3.pack(fill="x", pady=(12, 0))
+
+        info_items = [
+            ("📂", "按文件类型", "自动创建「文档」「图片」「视频」等分类文件夹"),
+            ("📅", "按修改日期", "自动按「年/月」创建目录层级结构"),
+            ("🔒", "安全可靠", "仅移动文件，不删除任何内容"),
+            ("🎯", "广泛兼容", "支持几乎所有常见文件格式"),
+        ]
+
+        tk.Label(
+            card3, text="💡 功能亮点",
+            font=FONT_BOLD, bg=C["card"], fg=C["text_main"]
+        ).pack(anchor="w")
+
+        grid = tk.Frame(card3, bg=C["card"])
+        grid.pack(fill="x", pady=(8, 0))
+
+        for i, (icon, title, desc) in enumerate(info_items):
+            col = i % 2
+            row = i // 2
+            item = tk.Frame(grid, bg=C["bg"], padx=12, pady=8, highlightthickness=0)
+            item.grid(row=row, column=col, sticky="ew", padx=4, pady=4)
+            grid.columnconfigure(col, weight=1)
+
+            tk.Label(item, text=f"{icon} {title}", font=FONT_BOLD,
+                     bg=C["bg"], fg=C["text_main"], anchor="w").pack(fill="x")
+            tk.Label(item, text=desc, font=("PingFang SC", 9),
+                     bg=C["bg"], fg=C["text_sec"], anchor="w").pack(fill="x")
+
+        # ── 进度条区域 ──
+        progress_card = tk.Frame(main, bg=C["card"], padx=20, pady=14)
+        progress_card.pack(fill="x", pady=(12, 0))
+
+        # 自定义进度条样式
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure(
+            "custom.Horizontal.TProgressbar",
+            background=C["primary"],
+            troughcolor=C["border"],
+            bordercolor=C["card"],
+            lightcolor=C["primary_light"],
+            darkcolor=C["primary"],
+            thickness=8
+        )
 
         self.progress_bar = ttk.Progressbar(
-            progress_frame, variable=self.progress_value,
-            length=600, mode="determinate"
+            progress_card, variable=self.progress_value,
+            length=600, mode="determinate", style="custom.Horizontal.TProgressbar"
         )
         self.progress_bar.pack(fill="x")
 
-        status_row = tk.Frame(main, bg="#f5f5f7")
-        status_row.pack(fill="x")
+        status_row = tk.Frame(progress_card, bg=C["card"])
+        status_row.pack(fill="x", pady=(6, 0))
 
         self.file_count_label = tk.Label(
             status_row, textvariable=self.file_count_var,
-            font=STATUS_FONT, bg="#f5f5f7", fg="#6e6e73"
+            font=STATUS_FONT, bg=C["card"], fg=C["text_sec"]
         )
         self.file_count_label.pack(side="left")
 
         self.status_label = tk.Label(
             status_row, textvariable=self.status_text,
-            font=STATUS_FONT, bg="#f5f5f7", fg="#6e6e73"
+            font=STATUS_FONT, bg=C["card"], fg=C["text_sec"]
         )
         self.status_label.pack(side="right")
 
-        # 底部信息
-        footer_frame = tk.Frame(main, bg="#f5f5f7")
-        footer_frame.pack(fill="x", pady=(4, 4))
+        # ── 底部操作栏 ──
+        bottom = tk.Frame(main, bg=C["bg"])
+        bottom.pack(fill="x", pady=(16, 0))
 
-        support_btn = tk.Button(
-            footer_frame, text="❤️ 支持作者",
-            font=("PingFang SC", 9), bg="#f5f5f7", fg="#86868b",
+        # 支持作者
+        tk.Button(
+            bottom, text="❤️ 支持作者",
+            font=("PingFang SC", 9), bg=C["bg"], fg=C["text_sec"],
             relief="flat", cursor="hand2", bd=0,
-            activebackground="#f5f5f7", activeforeground="#1d1d1f",
+            activebackground=C["bg"], activeforeground=C["text_main"],
             command=self.show_support
-        )
-        support_btn.pack()
+        ).pack(side="left")
 
-        # 开始按钮
-        btn_frame = tk.Frame(main, bg="#f5f5f7")
-        btn_frame.pack(fill="x", pady=(4, 0))
+        # 开始整理按钮
+        start_container = tk.Frame(bottom, bg=C["bg"])
+        start_container.pack(side="right")
 
         self.start_btn = tk.Button(
-            btn_frame, text="🚀 开始整理",
-            font=("PingFang SC", 13, "bold"), bg="#34c759", fg="white",
-            relief="flat", padx=32, pady=10, cursor="hand2",
-            activebackground="#30d158", activeforeground="white",
+            start_container, text="🚀 开始整理",
+            font=("PingFang SC", 14, "bold"),
+            bg=C["primary"], fg="#ffffff",
+            relief="flat", bd=0, cursor="hand2",
+            padx=36, pady=12,
+            activebackground="#6366F1", activeforeground="#ffffff",
+            highlightthickness=0,
             command=self.start_organize
         )
         self.start_btn.pack()
 
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+
+    def _make_card(self, parent):
+        """创建一个白色卡片容器"""
+        card = tk.Frame(parent, bg=C["card"], padx=20, pady=16)
+        return card
+
+    def _radio_option(self, parent, text, value, col):
+        """创建一个风格化的单选选项"""
+        frame = tk.Frame(parent, bg=C["card"])
+        frame.grid(row=0, column=col, sticky="w", padx=(0, 32))
+
+        rb = tk.Radiobutton(
+            frame, text=text, variable=self.org_mode, value=value,
+            font=("PingFang SC", 11), bg=C["card"], fg=C["text_main"],
+            activebackground=C["card"], activeforeground=C["primary"],
+            selectcolor=C["card"],
+            indicatoron=1
+        )
+        rb.pack(anchor="w")
 
     def select_folder(self):
         folder = filedialog.askdirectory(title="选择需要整理的文件夹")
