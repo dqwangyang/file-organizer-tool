@@ -25,7 +25,7 @@ File Organizer Tool is a cross-platform desktop application that automatically s
 ## 📦 Download
 
 ### macOS
-- [Download for macOS](文件智能整理工具_v1.0_macOS.zip) — 27MB, extract & run
+- [Download for macOS](文件智能整理工具_v2.0_macOS.zip) — 33MB, extract & run
 
 ### Windows
 - [Download for Windows](文件智能整理工具_Windows版.zip) — includes one-click launcher
@@ -33,7 +33,7 @@ File Organizer Tool is a cross-platform desktop application that automatically s
 ## 🔧 Usage
 
 ### macOS
-1. Download and extract `文件智能整理工具_v1.0_macOS.zip`
+1. Download and extract `文件智能整理工具_v2.0_macOS.zip`
 2. Drag `文件智能整理工具.app` into the `Applications` folder
 3. If you see "unidentified developer" warning, go to **System Settings → Privacy & Security → Open Anyway**
 4. Launch the app, select a folder, and click "开始整理" (Start)
