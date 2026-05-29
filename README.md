@@ -30,6 +30,10 @@
 - **Fast & Efficient**: Batch-process large numbers of files in milliseconds
 - **Open Source**: Fully transparent, MIT licensed
 
+## 📸 软件截图 | Screenshots
+
+![软件界面 / App Interface](screenshot.png)
+
 ## 📦 下载 | Download
 
 ### macOS
